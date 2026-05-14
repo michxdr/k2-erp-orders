@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K2 ERP Orders</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; color: #333; }
+
+        header {
+            background: #1a2b4a;
+            color: white;
+            padding: 16px 32px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 32px auto;
+            padding: 0 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            font-size: 16px;
+            color: #1a2b4a;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #1a2b4a;
+            padding-bottom: 8px;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #1a2b4a;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #2a3f6a; }
+
+        .result {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .result.success { background: #e8f5e9; color: #2e7d32; }
+        .result.error { background: #ffebee; color: #c62828; }
+
+        .full-width { grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+<header>K2 ERP — Модуль обліку замовлень</header>
+
+<div class="container">
+
+    <!-- Створити клієнта -->
+    <div class="card">
+        <h2>Створити клієнта</h2>
+        <input type="text" id="client-name" placeholder="Імʼя клієнта">
+        <input type="email" id="client-email" placeholder="Email клієнта">
+        <button onclick="createClient()">Створити</button>
+        <div class="result" id="client-result"></div>
+    </div>
+
+    <!-- Створити товар -->
+    <div class="card">
+        <h2>Створити товар</h2>
+        <input type="text" id="product-name" placeholder="Назва товару">
+        <input type="number" id="product-price" placeholder="Ціна (грн)">
+        <button onclick="createProduct()">Створити</button>
+        <div class="result" id="product-result"></div>
+    </div>
+
+    <!-- Створити замовлення -->
+    <div class="card full-width">
+        <h2>Створити замовлення</h2>
+        <input type="number" id="order-client-id" placeholder="ID клієнта">
+        <input type="number" id="order-product-id" placeholder="ID товару">
+        <input type="number" id="order-quantity" placeholder="Кількість" value="1">
+        <button onclick="createOrder()">Створити замовлення</button>
+        <div class="result" id="order-result"></div>
+    </div>
+
+    <!-- Замовлення клієнта -->
+    <div class="card full-width">
+        <h2>Замовлення клієнта</h2>
+        <input type="number" id="search-client-id" placeholder="ID клієнта">
+        <button onclick="getOrders()">Показати замовлення</button>
+        <div class="result" id="orders-result"></div>
+    </div>
+
+</div>
+
+<script>
+    function showResult(id, message, isSuccess) {
+        const el = document.getElementById(id);
+        el.textContent = message;
+        el.className = 'result ' + (isSuccess ? 'success' : 'error');
+        el.style.display = 'block';
+    }
+
+    async function createClient() {
+        const name = document.getElementById('client-name').value;
+        const email = document.getElementById('client-email').value;
+
+        const res = await fetch('/clients', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, email})
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showResult('client-result', `Клієнт створений! ID: ${data.id}`, true);
+        } else {
+            showResult('client-result', `${data.error}`, false);
+        }
+    }
+
+    async function createProduct() {
+        const name = document.getElementById('product-name').value;
+        const price = parseFloat(document.getElementById('product-price').value);
+
+        const res = await fetch('/products', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, price})
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showResult('product-result', `Товар створений! ID: ${data.id}`, true);
+        } else {
+            showResult('product-result', `${data.error}`, false);
+        }
+    }
+
+    async function createOrder() {
+        const client_id = parseInt(document.getElementById('order-client-id').value);
+        const product_id = parseInt(document.getElementById('order-product-id').value);
+        const quantity = parseInt(document.getElementById('order-quantity').value);
+
+        const res = await fetch('/orders', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                client_id,
+                items: [{product_id, quantity}]
+            })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            showResult('order-result', `Замовлення створено! ID: ${data.id}, Сума: ${data.total} грн`, true);
+        } else {
+            showResult('order-result', `${data.error}`, false);
+        }
+    }
+
+    async function getOrders() {
+        const client_id = document.getElementById('search-client-id').value;
+
+        const res = await fetch(`/clients/${client_id}/orders`);
+        const data = await res.json();
+
+        if (res.ok) {
+            if (data.orders.length === 0) {
+                showResult('orders-result', 'Замовлень не знайдено', true);
+                return;
+            }
+            const text = data.orders.map(o =>
+                `Замовлення #${o.id} — ${o.total} грн (${o.created_at.slice(0, 10)})`
+            ).join('\n');
+            showResult('orders-result', text, true);
+        } else {
+            showResult('orders-result', `${data.error}`, false);
+        }
+    }
+</script>
+
+</body>
+</html>
